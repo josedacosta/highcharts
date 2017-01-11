@@ -122,6 +122,7 @@ function getResources() {
 		<title>Sample viewer - Highcharts</title>
 		<?php echo getFramework(FRAMEWORK); ?>
 		<?php echo getResources(); ?>
+		<script src="test-controller.js"></script>
 		<link rel="stylesheet" type="text/css" href="style.css"/>
 
 
