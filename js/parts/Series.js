@@ -142,6 +142,9 @@ H.Series = H.seriesType('line', null, { // base series options
 	states: { // states for the entire series
 		hover: {
 			//enabled: false,
+			animation: { // docs
+				duration: 50
+			},
 			lineWidthPlus: 1,
 			marker: {
 				// lineWidth: base + 1,
@@ -185,8 +188,7 @@ H.Series = H.seriesType('line', null, { // base series options
 			eventType,
 			events,
 			chartSeries = chart.series,
-			lastSeries,
-			i;
+			lastSeries;
 
 		series.chart = chart;
 		series.options = options = series.setOptions(options); // merge with plotOptions
@@ -237,14 +239,8 @@ H.Series = H.seriesType('line', null, { // base series options
 		}
 		series._i = pick(lastSeries && lastSeries._i, -1) + 1;
 		
-		// Insert the series and update the `index` property of all series
-		// above this. Unless the `index` option is set, the new series is
-		// inserted last. #248, #1123, #2456
-		for (i = this.insert(chartSeries); i < chartSeries.length; i++) {
-			chartSeries[i].index = i;
-			chartSeries[i].name = chartSeries[i].name ||
-				'Series ' + (chartSeries[i].index + 1);
-		}
+		// Insert the series and re-order all series above the insertion point.
+		chart.orderSeries(this.insert(chartSeries));
 	},
 
 	/**
@@ -452,10 +448,14 @@ H.Series = H.seriesType('line', null, { // base series options
 
 	getCyclic: function (prop, value, defaults) {
 		var i,
+			chart = this.chart,
 			userOptions = this.userOptions,
 			indexName = prop + 'Index',
 			counterName = prop + 'Counter',
-			len = defaults ? defaults.length : pick(this.chart.options.chart[prop + 'Count'], this.chart[prop + 'Count']),
+			len = defaults ? defaults.length : pick(
+				chart.options.chart[prop + 'Count'], 
+				chart[prop + 'Count']
+			),
 			setting;
 
 		if (!value) {
@@ -464,8 +464,12 @@ H.Series = H.seriesType('line', null, { // base series options
 			if (defined(setting)) { // after Series.update()
 				i = setting;
 			} else {
-				userOptions['_' + indexName] = i = this.chart[counterName] % len;
-				this.chart[counterName] += 1;
+				// #6138
+				if (!chart.series.length) {
+					chart[counterName] = 0;
+				}
+				userOptions['_' + indexName] = i = chart[counterName] % len;
+				chart[counterName] += 1;
 			}
 			if (defaults) {
 				value = defaults[i];
@@ -851,7 +855,7 @@ H.Series = H.seriesType('line', null, { // base series options
 
 			// For points within the visible range, including the first point outside the
 			// visible range, consider y extremes
-			validValue = (isNumber(y, true) || isArray(y)) && (!yAxis.isLog || (y.length || y > 0));
+			validValue = (isNumber(y, true) || isArray(y)) && (!yAxis.positiveValuesOnly || (y.length || y > 0));
 			withinRange = this.getExtremesFromAll || this.options.getExtremesFromAll || this.cropped ||
 				((xData[i + 1] || x) >= xMin &&	(xData[i - 1] || x) <= xMax);
 
@@ -925,7 +929,7 @@ H.Series = H.seriesType('line', null, { // base series options
 				stackValues;
 
 			// Discard disallowed y values for log axes (#3434)
-			if (yAxis.isLog && yValue !== null && yValue <= 0) {
+			if (yAxis.positiveValuesOnly && yValue !== null && yValue <= 0) {
 				point.isNull = true;
 			}
 
@@ -953,7 +957,7 @@ H.Series = H.seriesType('line', null, { // base series options
 				if (yBottom === stackThreshold && stackIndicator.key === stack[xValue].base) {
 					yBottom = pick(threshold, yAxis.min);
 				}
-				if (yAxis.isLog && yBottom <= 0) { // #1200, #1232
+				if (yAxis.positiveValuesOnly && yBottom <= 0) { // #1200, #1232
 					yBottom = null;
 				}
 
@@ -1080,6 +1084,7 @@ H.Series = H.seriesType('line', null, { // base series options
 					chart[sharedClipKey] = chart[sharedClipKey].destroy();
 				}
 				if (chart[sharedClipKey + 'm']) {
+					this.markerGroup.clip();
 					chart[sharedClipKey + 'm'] = chart[sharedClipKey + 'm'].destroy();
 				}
 			}
@@ -1158,13 +1163,13 @@ H.Series = H.seriesType('line', null, { // base series options
 			globallyEnabled = pick(
 				seriesMarkerOptions.enabled,
 				xAxis.isRadial ? true : null,
-				series.closestPointRangePx > 2 * seriesMarkerOptions.radius
+				// Use larger or equal as radius is null in bubbles (#6321)
+				series.closestPointRangePx >= 2 * seriesMarkerOptions.radius
 			);
 
 		if (seriesMarkerOptions.enabled !== false || series._hasPointMarkers) {
 
-			i = points.length;
-			while (i--) {
+			for (i = 0; i < points.length; i++) {
 				point = points[i];
 				plotY = point.plotY;
 				graphic = point.graphic;
@@ -1225,8 +1230,7 @@ H.Series = H.seriesType('line', null, { // base series options
 	markerAttribs: function (point, state) {
 		var seriesMarkerOptions = this.options.marker,
 			seriesStateOptions,
-			pointOptions = point && point.options,
-			pointMarkerOptions = (pointOptions && pointOptions.marker) || {},
+			pointMarkerOptions = point.marker || {},
 			pointStateOptions,
 			radius = pick(
 				pointMarkerOptions.radius,
@@ -1378,6 +1382,7 @@ H.Series = H.seriesType('line', null, { // base series options
 			chart.hoverSeries = null;
 		}
 		erase(chart.series, series);
+		chart.orderSeries();
 
 		// clear all members
 		for (prop in series) {
@@ -1861,7 +1866,7 @@ H.Series = H.seriesType('line', null, { // base series options
 			}, animDuration);
 		}
 
-		series.isDirty = series.isDirtyData = false; // means data is in accordance with what you see
+		series.isDirty = false; // means data is in accordance with what you see
 		// (See #322) series.isDirty = series.isDirtyData = false; // means data is in accordance with what you see
 		series.hasRendered = true;
 	},
@@ -1918,7 +1923,17 @@ H.Series = H.seriesType('line', null, { // base series options
 		}, compareX);
 	},
 
+	/**
+	 * Build the k-d-tree that is used by mouse and touch interaction to get the
+	 * closest point. Line-like series typically have a one-dimensional tree 
+	 * where points are searched along the X axis, while scatter-like series
+	 * typically search in two dimensions, X and Y.
+	 */
 	buildKDTree: function () {
+
+		// Prevent multiple k-d-trees from being built simultaneously (#6235)
+		this.buildingKdTree = true;
+
 		var series = this,
 			dimensions = series.kdDimensions;
 
@@ -1960,6 +1975,7 @@ H.Series = H.seriesType('line', null, { // base series options
 				dimensions,
 				dimensions
 			);
+			series.buildingKdTree = false;
 		}
 		delete series.kdTree;
 
@@ -2016,7 +2032,7 @@ H.Series = H.seriesType('line', null, { // base series options
 			return ret;
 		}
 
-		if (!this.kdTree) {
+		if (!this.kdTree && !this.buildingKdTree) {
 			this.buildKDTree();
 		}
 

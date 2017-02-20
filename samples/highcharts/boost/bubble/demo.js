@@ -1,21 +1,20 @@
-$(function () {
 
-    // Prepare the data
-    var data = [],
-        n = 50000,
-        i;
-    for (i = 0; i < n; i += 1) {
-        data.push([
-            Math.pow(Math.random(), 2) * 100,
-            Math.pow(Math.random(), 2) * 100,
-            Math.pow(Math.random(), 2) * 100
-        ]);
-    }
 
-    if (!Highcharts.Series.prototype.renderCanvas) {
-        console.error('Module not loaded');
-        return;
-    }
+// Prepare the data
+var data = [],
+    n = 50000,
+    i;
+for (i = 0; i < n; i += 1) {
+    data.push([
+        Math.pow(Math.random(), 2) * 100,
+        Math.pow(Math.random(), 2) * 100,
+        Math.pow(Math.random(), 2) * 100
+    ]);
+}
+
+if (!Highcharts.Series.prototype.renderCanvas) {
+    console.error('Module not loaded');
+} else {
 
     console.time('bubble');
     console.time('asyncRender');
@@ -65,5 +64,4 @@ $(function () {
 
     });
     console.timeEnd('bubble');
-
-});
+}

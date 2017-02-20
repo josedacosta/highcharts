@@ -250,6 +250,7 @@ extend(Chart.prototype, /** @lends Highcharts.Chart.prototype */ {
 		// options.title => chart.title
 		// options.tooltip => chart.tooltip
 		// options.subtitle => chart.subtitle
+		// options.mapNavigation => chart.mapNavigation
 		// options.navigator => chart.navigator
 		// options.scrollbar => chart.scrollbar
 		for (key in options) {
@@ -276,13 +277,20 @@ extend(Chart.prototype, /** @lends Highcharts.Chart.prototype */ {
 			merge(true, this.options.plotOptions, options.plotOptions);
 		}
 
-		// Setters for collections. For axes and series, each item is referred by an id. If the 
-		// id is not found, it defaults to the first item in the collection, so setting series
-		// without an id, will update the first series in the chart.
+		// Setters for collections. For axes and series, each item is referred
+		// by an id. If the id is not found, it defaults to the corresponding
+		// item in the collection, so setting one series without an id, will
+		// update the first series in the chart. Setting two series without
+		// an id will update the first and the second respectively (#6019)
+		// // docs: New behaviour for unidentified items, add it to docs for 
+		// chart.update and responsive.
 		each(['xAxis', 'yAxis', 'series'], function (coll) {
 			if (options[coll]) {
-				each(splat(options[coll]), function (newOptions) {
-					var item = (defined(newOptions.id) && this.get(newOptions.id)) || this[coll][0];
+				each(splat(options[coll]), function (newOptions, i) {
+					var item = (
+						defined(newOptions.id) &&
+						this.get(newOptions.id)
+					) || this[coll][i];
 					if (item && item.coll === coll) {
 						item.update(newOptions, false);
 					}
@@ -427,7 +435,8 @@ extend(Series.prototype, /** @lends Series.prototype */ {
 			seriesOptions = series.options,
 			data = series.data,
 			chart = series.chart,
-			names = series.xAxis && series.xAxis.names,
+			xAxis = series.xAxis,
+			names = xAxis && xAxis.hasNames && xAxis.names,
 			dataOptions = seriesOptions.data,
 			point,
 			isInTheMiddle,
@@ -576,7 +585,7 @@ extend(Series.prototype, /** @lends Series.prototype */ {
 			// must use user options when changing type because this.options is merged
 			// in with type specific plotOptions
 			oldOptions = this.userOptions,
-			oldType = this.type,
+			oldType = this.oldType || this.type,
 			newType = newOptions.type || oldOptions.type || chart.options.chart.type,
 			proto = seriesTypes[oldType].prototype,
 			preserve = ['group', 'markerGroup', 'dataLabelsGroup'],
@@ -614,6 +623,7 @@ extend(Series.prototype, /** @lends Series.prototype */ {
 		});
 
 		this.init(chart, newOptions);
+		this.oldType = oldType;
 		chart.linkSeries(); // Links are lost in this.remove (#3028)
 		if (pick(redraw, true)) {
 			chart.redraw(false);

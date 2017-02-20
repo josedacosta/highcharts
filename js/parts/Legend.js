@@ -199,7 +199,17 @@ Legend.prototype = {
 			each(['legendItem', 'legendGroup'], destroyItems, item);
 		});
 
-		each(['box', 'title', 'group'], destroyItems, this);
+		// Destroy legend elements
+		each([
+			'clipRect',
+			'up',
+			'down',
+			'pager',
+			'nav',
+			'box',
+			'title',
+			'group'
+		], destroyItems, this);
 		this.display = null; // Reset in .render on update.
 	},
 
@@ -343,6 +353,7 @@ Legend.prototype = {
 			}
 
 			// Draw the legend symbol inside the group box
+			legend.symbolHeight = options.symbolHeight || legend.fontMetrics.f;
 			series.drawLegendSymbol(legend, item);
 
 			if (legend.setItemEvents) {
@@ -591,10 +602,10 @@ Legend.prototype = {
 		}*/
 
 		if (display) {
-			legendGroup.align(extend({
+			legendGroup.align(merge(options, {
 				width: legendWidth,
 				height: legendHeight
-			}, options), true, 'spacingBox');
+			}), true, 'spacingBox');
 		}
 
 		if (!chart.isResizing) {
@@ -718,7 +729,7 @@ Legend.prototype = {
 		// Reset
 		} else if (nav) {
 			clipToHeight();
-			nav.hide();
+			this.nav = nav.destroy(); // #6322
 			this.scrollGroup.attr({
 				translateY: 1
 			});
@@ -815,7 +826,7 @@ H.LegendSymbolMixin = {
 	 */
 	drawRectangle: function (legend, item) {
 		var options = legend.options,
-			symbolHeight = options.symbolHeight || legend.fontMetrics.f,
+			symbolHeight = legend.symbolHeight,
 			square = options.squareSymbol,
 			symbolWidth = square ? symbolHeight : legend.symbolWidth;
 
@@ -846,6 +857,8 @@ H.LegendSymbolMixin = {
 			radius,
 			legendSymbol,
 			symbolWidth = legend.symbolWidth,
+			symbolHeight = legend.symbolHeight,
+			generalRadius = symbolHeight / 2,
 			renderer = this.chart.renderer,
 			legendItemGroup = this.legendGroup,
 			verticalCenter = legend.baseline - Math.round(legend.fontMetrics.b * 0.3),
@@ -875,7 +888,22 @@ H.LegendSymbolMixin = {
 		
 		// Draw the marker
 		if (markerOptions && markerOptions.enabled !== false) {
-			radius = this.symbol.indexOf('url') === 0 ? 0 : markerOptions.radius;
+
+			// Do not allow the marker to be larger than the symbolHeight
+			radius = Math.min(
+				pick(markerOptions.radius, generalRadius),
+				generalRadius
+			);
+
+			// Restrict symbol markers size
+			if (this.symbol.indexOf('url') === 0) {
+				markerOptions = merge(markerOptions, {
+					width: symbolHeight,
+					height: symbolHeight
+				});
+				radius = 0;
+			}
+			
 			this.legendSymbol = legendSymbol = renderer.symbol(
 				this.symbol,
 				(symbolWidth / 2) - radius,

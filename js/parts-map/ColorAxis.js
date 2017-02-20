@@ -51,7 +51,8 @@ extend(ColorAxis.prototype, {
 			/*= } =*/
 		},
 		labels: {
-			overflow: 'justify'
+			overflow: 'justify',
+			rotation: 0
 		},
 		minColor: '${palette.highlightColor10}',
 		maxColor: '${palette.highlightColor100}',
@@ -59,9 +60,14 @@ extend(ColorAxis.prototype, {
 		showInLegend: true
 	},
 
-	// Properties to preserve after destroy, for Axis.update (#5881)
-	keepProps: ['legendGroup', 'legendItem', 'legendSymbol']
-		.concat(Axis.prototype.keepProps),
+	// Properties to preserve after destroy, for Axis.update (#5881, #6025)
+	keepProps: [
+		'legendGroup',
+		'legendItemHeight',
+		'legendItemWidth',
+		'legendItem',
+		'legendSymbol'
+	].concat(Axis.prototype.keepProps),
 
 	/**
 	 * Initialize the color axis
@@ -357,11 +363,15 @@ extend(ColorAxis.prototype, {
 	visible: true,
 	setVisible: noop,
 	getSeriesExtremes: function () {
-		var series;
-		if (this.series.length) {
-			series = this.series[0];
-			this.dataMin = series.valueMin;
-			this.dataMax = series.valueMax;
+		var series = this.series,
+			i = series.length;
+		this.dataMin = Infinity;
+		this.dataMax = -Infinity;
+		while (i--) {
+			if (series[i].valueMin !== undefined) {
+				this.dataMin = Math.min(this.dataMin, series[i].valueMin);
+				this.dataMax = Math.max(this.dataMax, series[i].valueMax);
+			}
 		}
 	},
 	drawCrosshair: function (e, point) {

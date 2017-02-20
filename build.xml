@@ -239,9 +239,8 @@
             <file name="parts/CandlestickSeries.js"/>
             <file name="parts/FlagsSeries.js"/>
             <file name="parts/Scrollbar.js"/>
-            <file name="parts/Scroller.js"/>
+            <file name="parts/Navigator.js"/>
             <file name="parts/RangeSelector.js"/>
-            <file name="parts/StockNavigation.js"/>
             <file name="parts/StockChart.js"/>
             <file name="parts/Facade.js"/>
             <file name="parts/Outro.js"/>
@@ -1031,19 +1030,19 @@
     <!-- Copy the folders and content of /samples and /studies to higcharts.com.site -->
     <target name="copy-to-site" depends="set.properties" description="Copy files from this repo to repository www.highcharts.com">
         <property file="git-ignore-me.properties"/>
-        <copy todir="${highcharts.site.dir}/php-app/samples">
+        <copy todir="${highcharts.site.dir}/samples">
             <fileset dir="samples"/>
         </copy>
-        <copy todir="${highcharts.site.dir}/php-app/studies">
+        <copy todir="${highcharts.site.dir}/studies">
             <fileset dir="studies"/>
         </copy>
-        <copy todir="${highcharts.site.dir}/php-app/js/themes">
+        <copy todir="${highcharts.site.dir}/js/themes">
             <fileset dir="js/themes"/>
         </copy>
-        <copy todir="${highcharts.site.dir}/php-app/errors">
+        <copy todir="${highcharts.site.dir}/errors">
             <fileset dir="errors"/>
         </copy>
-        <copy todir="${highcharts.site.dir}/php-app/lib">
+        <copy todir="${highcharts.site.dir}/lib">
             <fileset dir="vendor"/>
         </copy>
     </target>
