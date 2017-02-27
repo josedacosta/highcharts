@@ -219,7 +219,7 @@ extend(Legend.prototype, {
 
 	setItemEvents: function (item, legendItem, useHTML) {
 		var legend = this,
-			chart = legend.chart,
+			boxWrapper = legend.chart.renderer.boxWrapper,
 			activeClass = 'highcharts-legend-' + (item.series ? 'point' : 'series') + '-active';
 
 		// Set the events on the item group, or in case of useHTML, the item itself (#1249)
@@ -227,7 +227,7 @@ extend(Legend.prototype, {
 			item.setState('hover');
 			
 			// A CSS class to dim or hide other than the hovered series
-			chart.seriesGroup.addClass(activeClass);
+			boxWrapper.addClass(activeClass);
 			
 			/*= if (build.classic) { =*/
 			legendItem.css(legend.options.itemHoverStyle);
@@ -239,7 +239,7 @@ extend(Legend.prototype, {
 			/*= } =*/
 
 			// A CSS class to dim or hide other than the hovered series
-			chart.seriesGroup.removeClass(activeClass);
+			boxWrapper.removeClass(activeClass);
 			
 			item.setState();
 		})
@@ -797,7 +797,11 @@ extend(Series.prototype, /** @lends Series.prototype */ {
 		if (series.state !== state) {
 
 			// Toggle class names
-			each([series.group, series.markerGroup], function (group) {
+			each([
+				series.group,
+				series.markerGroup,
+				series.dataLabelsGroup
+			], function (group) {
 				if (group) {
 					// Old state
 					if (series.state) {
