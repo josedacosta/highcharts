@@ -73,8 +73,7 @@ H.StockChart = H.stockChart = function (a, b, c) {
 		columnOptions = {
 			shadow: false,
 			borderWidth: 0
-		},
-		titleFontSize = defaultOptions.title.style.fontSize;
+		};
 
 	// apply X axis options to both single and multi y axes
 	options.xAxis = map(splat(options.xAxis || {}), function (xAxisOptions) {
